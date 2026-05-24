@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<!-- Language of the webpage(en-English)-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!--Tiltle of the webpage-->
+    <title>CashLink</title>
+
+    <!-- Simple QR Code Scanner External JavaScript Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        /* Screen 1 Style [HOMEPAGE] */
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui; margin: 0; padding: 0; }
+        body { background-color: #0E0F1A; display: flex; justify-content: center; padding: 20px; }
+        .phone-container { width: 360px; height: 640px; background: #161728; border: 4px solid #2A2D4A; border-radius: 30px; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5);}
+        .screen { display: none; padding: 24px; height: 100%; flex-direction: column; }
+        .active { display: flex; }
+        h2 { text-align: center; margin-bottom: 20px; color: #F0F0FF; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #2A2D4A; background: #1E2035; color: #F0F0FF; font-size : 16px; }
+        button { background-color: #2f057c; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #27ae60; }
+        
+        /* Screen 2 Style [DASHBOARD] */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2A2D4A; padding-bottom: 14px; margin-bottom: 20px; }
+        .profile { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 40px; height: 40px; background: #332f88; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .logout-btn { background: #1E2035; width: auto; padding: 5px 10px; font-size: 12px; outline-color: white;}
+        .balance-card { background: linear-gradient(135deg, #3730A3 0%, #6C63FF 60%, #8B5CF6 100%); color: white; padding: 24px; border-radius: 16px; text-align: left; margin-bottom: 20px; }
+        .balance-amount { font-size: 34px; font-weight: bolder; margin-top: 5px;}
+        .history { flex-grow: 1; overflow-y: auto; margin-top: 10px; }
+        .tx-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid white; font-size: 14px; color: white;}
+        .tx-negative { color: #e74c3c; font-weight: bold;}
+        .tx-positive { color: #2ecc71; font-weight: bold}
+        
+        /* Scanner Modal */
+        #scanner-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0E0F1A; color: #F0F0FF; padding: 24px; box-sizing: border-box; z-index: 10; }
+    </style>
+</head>
+<body>
+
+<div class="phone-container">
+
+    <!-- SCREEN 1: Sign In or Register Homepage -->
+    <div id="screen1" class="screen active">
+        <div style="margin: auto 0;">
+            <div style="font-size: 50px; text-align: center; margin-bottom: 10px;">💳</div>
+            <h2 style="font-size: 40px; color: white; margin-bottom: 0;">CashLink</h2>
+            <p style="text-align: center; color: #817f8d; margin-bottom: 30px;">POINT. SCAN. PAY.</p>
+
+            <input type="text" id="email" placeholder="Enter Email Address">
+            <input type="text" id="username" placeholder="Enter Username (e.g., John)">
+
+            <input type="password" placeholder="Password">
+            <button onclick="login()">Sign In </button>
+            <button onclick="register()">Register</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: Dashboard -->
+    <div id="screen2" class="screen">
+    
+        <!-- Top Profile & Logout -->
+        <div class="header">
+            <div class="profile">
+                <div class="avatar" id="user-initial">J</div>
+                <div>
+                    <div style="font-weight: bold; font-size: 14px; color: white;" id="user-display">John</div>
+                    <div style="font-size: 11px; color: #7f8c8d;">Demonstration User</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Balance Display -->
+        <div class="balance-card">
+            <div style="font-size: 10px;">AVAILABLE BALANCE:</div>
+            <div class="balance-amount"><span id="balance">100</span> <span style="font-size: 18px;"> points</span></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <button onclick="topUp()" style="background-color: linear-gradient(135deg, #3730A3 0%, #6C63FF 60%, #8B5CF6 100%);">💵 Top Up Points (1 Rand = 1 Point)</button>
+        <button onclick="startScanner()" style="background-color: linear-gradient(135deg, #3730A3 0%, #6C63FF 60%, #8B5CF6 100%);">📷 Scan QR Code & Pay</button>
+
+        <!-- Transaction History -->
+        <h3 style="margin-top: 20px; font-size: 18px; color: whitesmoke;">Transaction History</h3>
+        <div class="history" id="tx-history">
+            <div class="tx-item"><span >Taxi Fare</span><span class="tx-negative">-20 pts</span></div>
+            <div class="tx-item"><span >Local Shop</span><span class="tx-negative">-30 pts</span></div>
+            <div class="tx-item"><span >Loaded points</span><span class="tx-positive">+140 pts</span></div>
+            <div class="tx-item"><span >Account Startup</span><span class="tx-positive">+10 pts</span></div>
+        </div>
+    </div>
+
+    <!-- Hidden Scanner Overlay / Modal -->
+    <div id="scanner-modal">
+        <h3>Scanning QR Code...</h3>
+        <div id="reader" style="width: 100%; background: rgba(255, 255, 255, 0.736); margin-top: 20px;"></div>
+        <p style="text-align: center; margin: 15px 0; font-size: 12px; color: #aaa;">Or simulate a manual scan entry below:</p>
+        <input type="text" id="manual-qr" placeholder="Enter shop name (e.g., Taxi #42)">
+        <input type="text" placeholder="Enter QR number">
+        <button onclick="handleQrSuccess(document.getElementById('manual-qr').value || 'Local Shop')">Simulate Scan Match</button>
+        <button onclick="stopScanner()" style="background-color:#1f0352;">Cancel</button>
+    </div>
+
+</div>
+
+<script>
+    // App State Variables
+    let currentBalance = 100;
+    let currentUser = null;
+    let html5QrcodeScanner = null;
+
+    // SCREEN 1: Login Logic
+    function login() 
+    {
+        const usernameInput = document.getElementById('username').value.trim();
+        const passwordInput = document.querySelector('#screen1 input[type="password"]').value
+        
+        if (!usernameInput || !passwordInput) 
+        {
+            alert("Please enter both username and password!");
+            return;
+        }
+
+        //Fetches user database from a localStorage
+       let users = JSON.parse(localStorage.getItem('cashlink_users')) || {};
+
+       // Check if user exists FIRST. If not, exit immediately.
+        if (!users[usernameInput]) {
+            alert("Username not found. Please register first!");
+            return; // This stops the function here so it won't look for .password
+        }
+
+       //Validates the password
+       if(users[usernameInput].password !== passwordInput)
+       {
+        alert ("Incorrect Password!");
+        return;
+       }
+
+       //Log the user in and load their unique data
+       currentUser = usernameInput;
+       currentBalance = users[usernameInput].balance;
+
+        // Update the profile details
+        document.getElementById('user-display').innerText = usernameInput;
+        document.getElementById('user-initial').innerText = usernameInput.charAt(0).toUpperCase();
+        document.getElementById('balance').innerText = currentBalance;
+
+       //Reload saved transaction history HTML
+       //document.getElementById('tx-history').innerHTML = users[currentUser].histortHTML || '';
+
+       // FIX: If the user has saved history, load it. 
+        // If they don't (e.g., an old account legacy), show a default startup row instead of leaving it blank.
+        if (users[currentUser].historyHTML && users[currentUser].historyHTML.trim() !== "") {
+            document.getElementById('tx-history').innerHTML = users[currentUser].historyHTML;
+        } else {
+            document.getElementById('tx-history').innerHTML = '<div class="tx-item"><span>Account Startup</span><span class="tx-positive">+10 pts</span></div>';
+        }
+
+        // Switch screens
+        document.getElementById('screen1').classList.remove('active');
+        document.getElementById('screen2').classList.add('active');
+    }
+
+    function register() 
+    {
+        const usernameInput = document.getElementById('username').value.trim();
+        const passwordInput = document.querySelector('#screen1 input[type="password"]').value;
+
+        if (!usernameInput || !passwordInput) {
+            alert("Please enter both a username and password to register!");
+            return;
+        }
+
+        let users = JSON.parse(localStorage.getItem('cashlink_users')) || {};
+
+        // Confirmation if overwriting an existing user account
+        if (users[usernameInput]) 
+        {
+            if (!confirm("This username already exists. Do you want to overwrite it and restart balance to 10 pts?")) 
+            {
+                return;
+            }
+        }
+
+        // Set up brand new account defaults (10 startup points)
+        currentUser = usernameInput;
+        currentBalance = 10;
+        
+        // Define clean starting history html
+        const startingHistory = '<div class="tx-item"><span>Account Startup</span><span class="tx-positive">+10 pts</span></div>';
+
+        // Save new profile setup to database state
+        users[currentUser] = 
+        {
+            password: passwordInput,
+            balance: currentBalance,
+            historyHTML: startingHistory
+        };
+        localStorage.setItem('cashlink_users', JSON.stringify(users));
+
+        // Update DOM elements for Dashboard view
+        document.getElementById('user-display').innerText = currentUser;
+        document.getElementById('user-initial').innerText = currentUser.charAt(0).toUpperCase();
+        document.getElementById('balance').innerText = currentBalance;
+        document.getElementById('tx-history').innerHTML = startingHistory;
+
+        // Switch screens
+        document.getElementById('screen1').classList.remove('active');
+        document.getElementById('screen2').classList.add('active');
+    }
+
+    function saveUserData() 
+    {
+        if (!currentUser) return;
+        let users = JSON.parse(localStorage.getItem('cashlink_users')) || {};
+        if (users[currentUser]) 
+        {
+            users[currentUser].balance = currentBalance;
+            users[currentUser].historyHTML = document.getElementById('tx-history').innerHTML;
+            localStorage.setItem('cashlink_users', JSON.stringify(users));
+        }
+    }
+
+    // Return to Screen 1
+    function logout() 
+    {
+        currentUser = null;
+        currentBalance = 100;
+
+        document.getElementById('screen2').classList.remove('active');
+        document.getElementById('screen1').classList.add('active');
+    }
+
+    // Top Up Feature
+    function topUp() {
+        let amount = prompt("How much cash would you like to convert to digital points?", "50");
+        amount = parseInt(amount);
+        
+        if (isNaN(amount) || amount <= 0) {
+            alert("Invalid amount.");
+            return;
+        }
+
+        currentBalance += amount;
+        document.getElementById('balance').innerText = currentBalance;
+        addTransaction("Loaded Points", amount, true);
+        saveUserData();
+    }
+
+    // QR Scanner Feature
+    function startScanner() 
+    {
+        document.getElementById('scanner-modal').style.display = 'block';
+        
+        // Initialize the actual camera scanner
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess, onScanError);
+    }
+
+    function onScanSuccess(decodedText, decodedResult)
+    {
+        handleQrSuccess(decodedText);
+    }
+
+    function onScanError(err) 
+    {
+        // Silent error to avoid spamming the console during scanning frames
+    }
+
+    function stopScanner() 
+    {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear().catch(err => console.log(err));
+            html5QrcodeScanner = null;
+        }
+        document.getElementById('scanner-modal').style.display = 'none';
+    }
+
+    // Payment Deducting Logic
+    function handleQrSuccess(LocalShopName) {
+        stopScanner();
+        
+        let deductAmount = prompt(`Paying: ${LocalShopName}\nEnter points to deduct:`, "25");
+        deductAmount = parseInt(deductAmount);
+
+        if (isNaN(deductAmount) || deductAmount <= 0) {
+            alert("Payment canceled or invalid amount.");
+            return;
+        }
+
+        if (deductAmount > currentBalance) {
+            alert("Insufficient points! Please top up your balance.");
+            return;
+        }
+
+        // Deduct balance
+        currentBalance -= deductAmount;
+        document.getElementById('balance').innerText = currentBalance;
+        
+        // Log transaction
+        addTransaction(LocalShopName, deductAmount, false);
+        saveUserData();
+        alert(`Successfully paid ${deductAmount} points to ${LocalShopName}!`);
+    }
+
+    // Helper to log history
+    function addTransaction(title, amount, isPositive) {
+        const historyContainer = document.getElementById('tx-history');
+        const newItem = document.createElement('div');
+        newItem.className = 'tx-item';
+        
+        if (isPositive) {
+            newItem.innerHTML = `<span>${title}</span><span class="tx-positive">+${amount} pts</span>`;
+        } else {
+            newItem.innerHTML = `<span>${title}</span><span class="tx-negative">-${amount} pts</span>`;
+        }
+        
+        // Prepend to show latest transactions at the top
+        historyContainer.insertBefore(newItem, historyContainer.firstChild);
+    }
+</script>
+
+</body>
+</html>
