@@ -55,7 +55,9 @@ A simple, points-based system that mirrors cash transactions while introducing d
 4. **Top up** points (simulated cash conversion)
 5. **Scan QR codes** to make payments
 
-| QR scan latency | ~200ms |
-| Transaction processing | < 50ms |
-| Storage size per user | ~2KB |
-| Bundle size | ~150KB (including libraries) |
+---
+## TEAM MEMBERS
+✦ Omphulusa Sibara
+✦ Nelly Mbungu
+✦ Asemahle Tsobo
+
