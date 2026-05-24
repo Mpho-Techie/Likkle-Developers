@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CashLink</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:           #0E0F1A;
+    --surface:      #161728;
+    --card:         #1E2035;
+    --border:       #2A2D4A;
+    --accent:       #6C63FF;
+    --accent-light: #8B85FF;
+    --success:      #22D3A0;
+    --warn:         #F59E0B;
+    --danger:       #F87171;
+    --text:         #F0F0FF;
+    --muted:        #8B8DAA;
+    --pill:         #252740;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui;
+    min-height: 100vh;
+  }
+
+  #app {
+    max-width: 420px;
+    margin: 0 auto;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  /* ── Utility ── */
+  button { font-family: inherit; }
+  input  { font-family: inherit; }
+
+  .hidden { display: none !important; }
+
+  /* ── Auth Screen ── */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-wrap { width: 100%; max-width: 380px; }
+  .auth-logo { text-align: center; margin-bottom: 32px; }
+  .auth-logo .icon { font-size: 40px; margin-bottom: 8px; }
+  .auth-logo h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .auth-logo p  { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .auth-box {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 28px;
+  }
+
+  .tab-toggle {
+    display: flex;
+    background: var(--pill);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+  .tab-toggle button {
+    flex: 1; padding: 8px 0; border-radius: 8px; border: none;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    background: transparent; color: var(--muted); transition: all .2s;
+  }
+  .tab-toggle button.active { background: var(--accent); color: #fff; }
+
+  .field-group { display: flex; flex-direction: column; gap: 12px; }
+  .field-group input {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; color: var(--text); font-size: 14px; width: 100%; outline: none;
+  }
+  .field-group input::placeholder { color: var(--muted); }
+
+  .err-msg { color: var(--danger); font-size: 12px; margin-top: 12px; text-align: center; }
+
+  .btn-primary {
+    width: 100%; margin-top: 20px; padding: 14px; border-radius: 12px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity .2s;
+  }
+  .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+
+  .demo-hint {
+    margin-top: 14px; padding: 10px 14px;
+    background: var(--pill); border-radius: 10px;
+    font-size: 12px; color: var(--muted); text-align: center;
+  }
+  .demo-hint span { color: var(--accent-light); }
+
+  /* ── App Shell ── */
+  #main-screen { display: none; }
+
+  .app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-left .logo-icon { font-size: 20px; }
+  .header-left .app-name  { font-size: 14px; font-weight: 700; }
+  .header-left .user-name { font-size: 11px; color: var(--muted); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .balance-pill {
+    font-size: 12px; font-weight: 700; color: var(--accent-light);
+    background: rgba(108,99,255,.13); padding: 4px 10px; border-radius: 20px;
+  }
+  .logout-btn {
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px;
+  }
+
+  .screen-content { padding-bottom: 80px; }
+
+  /* ── Bottom Nav ── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 420px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; padding: 8px 0 12px; z-index: 10;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: none; border: none; cursor: pointer; padding: 6px 0;
+  }
+  .nav-btn .nav-icon  { font-size: 20px; }
+  .nav-btn .nav-label { font-size: 10px; font-weight: 600; color: var(--muted); }
+  .nav-btn.active .nav-label { color: var(--accent-light); }
+  .nav-dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent); display: none; margin-top: 2px;
+  }
+  .nav-btn.active .nav-dot { display: block; }
+
+  /* ── Screens ── */
+  .screen { display: none; padding: 20px 16px; }
+  .screen.active { display: block; }
+
+  /* ── Wallet Screen ── */
+  .balance-card {
+    background: linear-gradient(135deg, #3730A3 0%, var(--accent) 60%, #8B5CF6 100%);
+    border-radius: 20px; padding: 28px 24px; margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .balance-card .circle1 {
+    position: absolute; top: -30px; right: -30px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,.07);
+  }
+  .balance-card .circle2 {
+    position: absolute; bottom: -20px; left: 80px;
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(255,255,255,.05);
+  }
+  .balance-label { font-size: 12px; color: rgba(255,255,255,.7); margin-bottom: 6px; letter-spacing: .08em; text-transform: uppercase; }
+  .balance-amount { font-size: 38px; font-weight: 800; color: #fff; letter-spacing: -1px; }
+  .balance-amount span { font-size: 18px; font-weight: 500; opacity: .8; }
+  .balance-equiv { margin-top: 12px; font-size: 13px; color: rgba(255,255,255,.75); }
+  .balance-user  { margin-top: 16px; font-size: 12px; color: rgba(255,255,255,.6); }
+
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .action-btn {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 12px; color: var(--text); cursor: pointer; font-size: 13px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .action-btn .a-icon { font-size: 22px; }
+
+  .topup-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; margin-bottom: 20px;
+  }
+  .box-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+  .preset-amounts { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .preset-btn {
+    flex: 1; min-width: 60px; padding: 8px 4px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--pill);
+    color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .preset-btn.selected { border-color: var(--accent); background: rgba(108,99,255,.13); color: var(--accent-light); }
+  .topup-row { display: flex; gap: 10px; }
+  .topup-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none;
+  }
+  .topup-row input::placeholder { color: var(--muted); }
+  .add-btn {
+    padding: 10px 20px; border-radius: 10px; border: none;
+    background: var(--success); color: #000; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .topup-success { margin-top: 10px; color: var(--success); font-size: 12px; font-weight: 600; }
+  .topup-hint    { margin-top: 10px; font-size: 11px; color: var(--muted); }
+
+  .recent-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px;
+  }
+  .recent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .recent-header span { font-size: 13px; font-weight: 700; }
+  .view-all-btn { font-size: 11px; color: var(--accent-light); background: none; border: none; cursor: pointer; font-weight: 600; }
+  .mini-tx { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .mini-tx:last-child { border-bottom: none; }
+  .mini-tx-left { display: flex; align-items: center; gap: 12px; }
+  .tx-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  .mini-tx-name { font-size: 13px; font-weight: 600; }
+  .mini-tx-date { font-size: 11px; color: var(--muted); }
+  .mini-tx-pts  { font-size: 14px; font-weight: 700; }
+
+  /* ── QR / Pay Screen ── */
+  .pay-balance { text-align: center; margin-bottom: 24px; }
+  .pay-balance .bal-lbl { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .pay-balance .bal-val { color: var(--accent-light); font-weight: 700; }
+  .pay-balance .pay-title { font-size: 15px; font-weight: 700; }
+
+  .qr-scanner-box {
+    background: var(--card); border: 2px dashed var(--accent);
+    border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 24px;
+  }
+  .scanner-icon { font-size: 36px; }
+  .scanner-text { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .scanning-icon { font-size: 32px; margin-bottom: 8px; animation: pulse .6s infinite; }
+  .scanning-text { color: var(--accent-light); font-size: 13px; font-weight: 600; }
+  .scan-bar { margin-top: 12px; height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .scan-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; animation: scan 1.2s ease-in-out; }
+
+  .merchant-section-label {
+    font-size: 12px; color: var(--muted); margin-bottom: 12px;
+    font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .merchant-list { display: flex; flex-direction: column; gap: 10px; }
+  .merchant-btn {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+    cursor: pointer; text-align: left; width: 100%;
+  }
+  .merchant-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .merchant-cat-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .merchant-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .merchant-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .merchant-arrow { font-size: 20px; color: var(--muted); margin-left: auto; }
+
+  /* confirm step */
+  .back-btn { background: none; border: none; color: var(--accent-light); cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 16px; padding: 0; }
+  .confirm-merchant-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 24px; margin-bottom: 20px; text-align: center;
+  }
+  .confirm-m-icon { font-size: 36px; margin-bottom: 8px; }
+  .confirm-m-name { font-size: 18px; font-weight: 700; }
+  .confirm-m-cat  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .qr-display-wrap { display: flex; justify-content: center; margin: 20px 0; }
+  .qr-code-label   { font-size: 11px; color: var(--muted); }
+
+  .amount-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; margin-bottom: 16px;
+  }
+  .amount-box label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 10px; }
+  .amount-box input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text);
+    font-size: 20px; font-weight: 700; outline: none;
+  }
+  .amount-hint { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+  .continue-btn {
+    width: 100%; padding: 16px; border-radius: 14px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+
+  /* pin step */
+  .pin-step { text-align: center; }
+  .pin-step .lock-icon { font-size: 28px; margin-bottom: 12px; }
+  .pin-step h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .pin-step .pin-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .pin-input {
+    background: var(--card); border: 2px solid var(--accent); border-radius: 14px;
+    padding: 14px 20px; color: var(--text); font-size: 24px; text-align: center;
+    letter-spacing: .3em; outline: none; width: 200px; display: block; margin: 0 auto 8px;
+  }
+  .pin-err { color: var(--danger); font-size: 12px; margin-bottom: 12px; }
+  .pin-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+  .btn-secondary {
+    padding: 12px 24px; border-radius: 12px;
+    border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; font-size: 14px;
+  }
+  .btn-pay {
+    padding: 12px 28px; border-radius: 12px; border: none;
+    background: var(--accent); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  /* result steps */
+  .result-step { text-align: center; padding-top: 40px; }
+  .result-step .r-icon  { font-size: 56px; margin-bottom: 16px; }
+  .result-step h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .result-step .r-sub { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .result-step .r-ref { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .result-step .r-bal { font-size: 14px; margin-bottom: 4px; }
+  .result-step .r-bal span { font-weight: 700; color: var(--accent-light); }
+  .result-step .r-actions { margin-top: 32px; }
+  .done-btn {
+    padding: 14px 36px; border-radius: 14px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .retry-btn {
+    padding: 14px 36px; border-radius: 14px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+
+  /* ── History Screen ── */
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { border-radius: 14px; padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 800; }
+  .stat-unit  { font-size: 11px; color: var(--muted); }
+
+  .filter-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  .filter-btn {
+    padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: none; color: var(--muted);
+  }
+  .filter-btn.active { border-color: var(--accent); background: rgba(108,99,255,.13); color: var(--accent-light); }
+
+  .tx-list { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .tx-empty { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+  .tx-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-main-icon {
+    width: 42px; height: 42px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+  }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tx-right { text-align: right; flex-shrink: 0; }
+  .tx-pts  { font-size: 15px; font-weight: 800; }
+  .tx-rand { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Animations ── */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes scan  { 0%{width:0} 100%{width:100%} }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ AUTH SCREEN ══ -->
+  <div id="auth-screen">
+    <div class="auth-wrap">
+      <div class="auth-logo">
+        <div class="icon">💳</div>
+        <h1>CashLink</h1>
+        <p>POINT. SCAN. PAY.</p>
+      </div>
+      <div class="auth-box">
+        <div class="tab-toggle">
+          <button id="btn-login-tab" class="active" onclick="setAuthMode('login')">Sign In</button>
+          <button id="btn-register-tab" onclick="setAuthMode('register')">Register</button>
+        </div>
+        <div class="field-group" id="auth-fields">
+          <input id="f-name"  type="text"     placeholder="Full Name"     class="hidden" />
+          <input id="f-phone" type="tel"      placeholder="Phone Number"  class="hidden" />
+          <input id="f-email" type="email"    placeholder="Email Address" />
+          <input id="f-pin"   type="password" placeholder="4-digit PIN" maxlength="4" />
+          <input id="f-pin2"  type="password" placeholder="Confirm PIN"  maxlength="4" class="hidden" />
+        </div>
+        <div id="auth-err" class="err-msg hidden"></div>
+        <button class="btn-primary" id="auth-submit-btn" onclick="authSubmit()">Sign In</button>
+        <div class="demo-hint" id="demo-hint">
+          Demo: <span>demo@cashlink.app</span> / PIN: <span>1234</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MAIN APP ══ -->
+  <div id="main-screen">
+    <!-- Header -->
+    <div class="app-header">
+      <div class="header-left">
+        <span class="logo-icon">💳</span>
+        <div>
+          <div class="app-name">CashLink</div>
+          <div class="user-name" id="header-username"></div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="balance-pill" id="header-balance"></div>
+        <button class="logout-btn" onclick="logout()" title="Logout">⏏</button>
+      </div>
+    </div>
+
+    <!-- Screens -->
+    <div class="screen-content">
+      <!-- Wallet -->
+      <div id="screen-wallet" class="screen active">
+        <div class="balance-card">
+          <div class="circle1"></div><div class="circle2"></div>
+          <div class="balance-label"> Current Available Balance</div>
+          <div class="balance-amount" id="wallet-balance-pts">0 <span>pts</span></div>
+          <div class="balance-equiv" id="wallet-balance-rand"></div>
+          <div class="balance-user" id="wallet-user-info"></div>
+        </div>
+
+        <div class="quick-actions">
+          <button class="action-btn" onclick="setTab('qr')">
+            <span class="a-icon">📷</span>Scan &amp; Pay
+          </button>
+          <button class="action-btn" onclick="setTab('history')">
+            <span class="a-icon">📋</span>History
+          </button>
+        </div>
+
+        <div class="topup-box">
+          <div class="box-title">💰 Top Up Points</div>
+          <div class="preset-amounts" id="preset-amounts"></div>
+          <div class="topup-row">
+            <input type="number" id="topup-input" placeholder="Custom amount" oninput="onTopupInput()" />
+            <button class="add-btn" id="topup-add-btn" onclick="doTopup()">Add</button>
+          </div>
+          <div class="topup-success hidden" id="topup-success">✅ Points added successfully!</div>
+          <div class="topup-hint">1 Point = R1 · 1 pts per R1</div>
+        </div>
+
+        <div class="recent-box">
+          <div class="recent-header">
+            <span>Recent Activity</span>
+            <button class="view-all-btn" onclick="setTab('history')">View all →</button>
+          </div>
+          <div id="recent-tx-list"></div>
+        </div>
+      </div>
+
+      <!-- Pay / QR -->
+      <div id="screen-qr" class="screen">
+        <div id="pay-step-scan">
+          <div class="pay-balance">
+            <div class="bal-lbl">Balance: <span class="bal-val" id="pay-balance-val"></span></div>
+            <div class="pay-title">Select a merchant to pay</div>
+          </div>
+          <div class="qr-scanner-box" id="scanner-box">
+            <div id="scanner-idle">
+              <div class="scanner-icon">📷</div>
+              <div class="scanner-text">Tap a merchant below to simulate QR scan</div>
+            </div>
+            <div id="scanner-active" class="hidden">
+              <div class="scanning-icon">📷</div>
+              <div class="scanning-text">Scanning QR Code…</div>
+              <div class="scan-bar"><div class="scan-bar-fill"></div></div>
+            </div>
+          </div>
+          <div class="merchant-section-label">Available Merchants</div>
+          <div class="merchant-list" id="merchant-list"></div>
+        </div>
+
+        <div id="pay-step-confirm" class="hidden">
+          <button class="back-btn" onclick="payReset()">← Back</button>
+          <div class="confirm-merchant-card">
+            <div class="confirm-m-icon" id="confirm-m-icon"></div>
+            <div class="confirm-m-name" id="confirm-m-name"></div>
+            <div class="confirm-m-cat"  id="confirm-m-cat"></div>
+            <div class="qr-display-wrap"><canvas id="qr-canvas" width="140" height="140" style="border-radius:6px"></canvas></div>
+            <div class="qr-code-label"  id="confirm-qr-label"></div>
+          </div>
+          <div class="amount-box">
+            <label>Enter amount to pay</label>
+            <input type="number" id="pay-amount-input" placeholder="e.g. 150" oninput="updateAmountHint()" />
+            <div class="amount-hint" id="amount-hint"></div>
+          </div>
+          <button class="continue-btn" onclick="payConfirm()">Continue →</button>
+        </div>
+
+        <div id="pay-step-pin" class="hidden pin-step">
+          <div class="lock-icon">🔒</div>
+          <h2>Confirm with PIN</h2>
+          <div class="pin-subtitle" id="pin-subtitle"></div>
+          <input type="password" class="pin-input" id="pin-input" maxlength="4" placeholder="Enter 4-digit PIN" />
+          <div class="pin-err hidden" id="pin-err"></div>
+          <div class="pin-actions">
+            <button class="btn-secondary" onclick="backToConfirm()">Cancel</button>
+            <button class="btn-pay" onclick="submitPin()">Pay Now</button>
+          </div>
+        </div>
+
+        <div id="pay-step-success" class="hidden result-step">
+          <div class="r-icon">✅</div>
+          <h2 style="color:var(--success)">Payment Successful!</h2>
+          <div class="r-sub" id="success-sub"></div>
+          <div class="r-ref" id="success-ref"></div>
+          <div class="r-bal" id="success-bal"></div>
+          <div class="r-actions"><button class="done-btn" onclick="payReset()">Done</button></div>
+        </div>
+
+        <div id="pay-step-error" class="hidden result-step">
+          <div class="r-icon">❌</div>
+          <h2 style="color:var(--danger)">Payment Failed</h2>
+          <div class="r-sub" id="error-msg"></div>
+          <div class="r-actions"><button class="retry-btn" onclick="payReset()">Try Again</button></div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div id="screen-history" class="screen">
+        <div class="stats-row">
+          <div class="stat-card" style="background:rgba(34,211,160,.094);border:1px solid rgba(34,211,160,.267)">
+            <div class="stat-label">TOTAL TOPPED UP</div>
+            <div class="stat-value" id="stat-in" style="color:var(--success)">+0</div>
+            <div class="stat-unit">points</div>
+          </div>
+          <div class="stat-card" style="background:rgba(248,113,113,.094);border:1px solid rgba(248,113,113,.267)">
+            <div class="stat-label">TOTAL POINTS SPENT</div>
+            <div class="stat-value" id="stat-out" style="color:var(--danger)">-0</div>
+            <div class="stat-unit">points</div>
+          </div>
+        </div>
+        <div class="filter-row" id="filter-row">
+          <button class="filter-btn active" data-f="all"     onclick="setFilter('all')">All</button>
+          <button class="filter-btn"        data-f="payment" onclick="setFilter('payment')">Payments</button>
+          <button class="filter-btn"        data-f="topup"   onclick="setFilter('topup')">Top-ups</button>
+        </div>
+        <div class="tx-list" id="tx-list"></div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-btn active" data-tab="wallet" onclick="setTab('wallet')">
+        <span class="nav-icon">💳</span>
+        <span class="nav-label">Point Page</span>
+        <span class="nav-dot"></span>
+      </button>
+      <button class="nav-btn" data-tab="qr" onclick="setTab('qr')">
+        <span class="nav-icon">📷</span>
+        <span class="nav-label">Pay</span>
+        <span class="nav-dot"></span>
+      </button>
+      <button class="nav-btn" data-tab="history" onclick="setTab('history')">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">History</span>
+        <span class="nav-dot"></span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<script>
+// ─── In-Memory Store ──────────────────────────────────────────────────────────
+const store = {
+  users: [
+    { id:"U001", name:"Demo User", email:"demo@cashlink.app", phone:"0812345678", pin:"1234", created_at:"2025-01-10" }
+  ],
+  wallets: [
+    { id:"W001", user_id:"U001", balance_points:2450 }
+  ],
+  merchants: [
+    { id:"M001", name:"Bites",        category:"Food & Drink", qr_code:"QR-M001-KASI" },
+    { id:"M002", name:"Grocery",  category:"Grocery",      qr_code:"QR-M002-TOWN" },
+    { id:"M003", name:"Fuel Station",  category:"Fuel",         qr_code:"QR-M003-FUEL" },
+    { id:"M004", name:"Taxi",    category:"Transportation",       qr_code:"QR-M004-TAXI" },
+    { id:"M005", name:"Tuck Shop", category:"Retail",       qr_code:"QR-M005-TUCK" },
+  ],
+  transactions: [
+    { id:"T001", user_id:"U001", merchant_id:"M001", points:-80,   type:"payment", ref:"PAY-001", created_at:"2025-05-20 09:14" },
+    { id:"T002", user_id:"U001", merchant_id:null,   points:1000,  type:"topup",   ref:"TOP-002", created_at:"2025-05-18 14:30" },
+    { id:"T003", user_id:"U001", merchant_id:"M002", points:-350,  type:"payment", ref:"PAY-003", created_at:"2025-05-17 11:05" },
+    { id:"T004", user_id:"U001", merchant_id:null,   points:2000,  type:"topup",   ref:"TOP-004", created_at:"2025-05-15 08:00" },
+    { id:"T005", user_id:"U001", merchant_id:"M003", points:-120,  type:"payment", ref:"PAY-005", created_at:"2025-05-13 16:44" },
+  ],
+  nextIds: { user:2, wallet:2, transaction:6 }
+};
+
+const catIcons  = { "Food & Drink":"🍔", Grocery:"🛒", Fuel:"⛽", Taxi:"🚗", Retail:"🛍️" };
+const catColors = { "Food & Drink":"#F97316", Grocery:"#22C55E", Fuel:"#EAB308", Fuel:"#38BDF8", Retail:"#A78BFA" };
+
+// ─── DB Helpers ───────────────────────────────────────────────────────────────
+const db = {
+  findUserByEmail: e  => store.users.find(u => u.email === e),
+  findUserById:    id => store.users.find(u => u.id === id),
+  getWallet:      uid => store.wallets.find(w => w.user_id === uid),
+  getMerchant:     id => store.merchants.find(m => m.id === id),
+  getTransactions:uid => [...store.transactions].filter(t => t.user_id === uid).sort((a,b) => b.id.localeCompare(a.id)),
+
+  insertUser(data) {
+    const id  = `U00${store.nextIds.user++}`;
+    const wid = `W00${store.nextIds.wallet++}`;
+    store.users.push({ ...data, id, created_at: new Date().toISOString().slice(0,10) });
+    store.wallets.push({ id: wid, user_id: id, balance_points: 0 });
+    return id;
+  },
+  topupWallet(uid, points, ref) {
+    const w = db.getWallet(uid);
+    w.balance_points += points;
+    store.transactions.push({ id:`T00${store.nextIds.transaction++}`, user_id:uid, merchant_id:null, points, type:"topup", ref, created_at:new Date().toLocaleString("en-ZA") });
+    return w.balance_points;
+  },
+  payMerchant(uid, mid, points) {
+    const w = db.getWallet(uid);
+    if (w.balance_points < points) return { ok:false, msg:"Insufficient points balance" };
+    w.balance_points -= points;
+    const ref  = `PAY-${String(store.nextIds.transaction).padStart(3,"0")}`;
+    store.transactions.push({ id:`T00${store.nextIds.transaction++}`, user_id:uid, merchant_id:mid, points:-points, type:"payment", ref, created_at:new Date().toLocaleString("en-ZA") });
+    return { ok:true, balance:w.balance_points, ref };
+  }
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let currentUserId  = null;
+let authMode       = "login";
+let currentTab     = "wallet";
+let historyFilter  = "all";
+let paySelected    = null;
+let payLoading     = false;
+let topupLoading   = false;
+
+// ─── QR Draw ─────────────────────────────────────────────────────────────────
+function drawQR(canvas, value, size) {
+  const ctx  = canvas.getContext("2d");
+  const cell = Math.floor(size / 21);
+  ctx.clearRect(0, 0, size, size);
+  const hash = [...value].reduce((a,ch) => (a*31 + ch.charCodeAt(0)) >>> 0, 0);
+  const rand = i => ((hash*(i+7)*1103515245+12345) >>> 0) % 2;
+  ctx.fillStyle = "#fff"; ctx.fillRect(0,0,size,size);
+  const fp = (x,y) => {
+    ctx.fillStyle="#000"; ctx.fillRect(x*cell,y*cell,7*cell,7*cell);
+    ctx.fillStyle="#fff"; ctx.fillRect((x+1)*cell,(y+1)*cell,5*cell,5*cell);
+    ctx.fillStyle="#000"; ctx.fillRect((x+2)*cell,(y+2)*cell,3*cell,3*cell);
+  };
+  fp(0,0); fp(14,0); fp(0,14);
+  for (let r=0; r<21; r++) for (let c=0; c<21; c++) {
+    const fz = (r<9&&c<9)||(r<9&&c>11)||(r>11&&c<9);
+    if (!fz && rand(r*21+c)) { ctx.fillStyle="#000"; ctx.fillRect(c*cell,r*cell,cell,cell); }
+  }
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+function setAuthMode(mode) {
+  authMode = mode;
+  const isReg = mode === "register";
+  document.getElementById("btn-login-tab").classList.toggle("active", !isReg);
+  document.getElementById("btn-register-tab").classList.toggle("active", isReg);
+  document.getElementById("f-name").classList.toggle("hidden", !isReg);
+  document.getElementById("f-phone").classList.toggle("hidden", !isReg);
+  document.getElementById("f-pin2").classList.toggle("hidden", !isReg);
+  document.getElementById("demo-hint").classList.toggle("hidden", isReg);
+  document.getElementById("auth-submit-btn").textContent = isReg ? "Create Account" : "Sign In";
+  document.getElementById("auth-err").classList.add("hidden");
+  ["f-name","f-email","f-phone","f-pin","f-pin2"].forEach(id => { document.getElementById(id).value = ""; });
+}
+
+function showAuthErr(msg) {
+  const el = document.getElementById("auth-err");
+  el.textContent = msg; el.classList.remove("hidden");
+}
+
+function authSubmit() {
+  document.getElementById("auth-err").classList.add("hidden");
+  const btn = document.getElementById("auth-submit-btn");
+  btn.disabled = true; btn.textContent = "Please wait…";
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = authMode === "login" ? "Sign In" : "Create Account";
+    const email = document.getElementById("f-email").value.trim();
+    const pin   = document.getElementById("f-pin").value.trim();
+    if (authMode === "login") {
+      const user = db.findUserByEmail(email);
+      if (!user || user.pin !== pin) return showAuthErr("Invalid email or PIN");
+      loginUser(user.id);
+    } else {
+      const name  = document.getElementById("f-name").value.trim();
+      const phone = document.getElementById("f-phone").value.trim();
+      const pin2  = document.getElementById("f-pin2").value.trim();
+      if (!name||!email||!phone||!pin) return showAuthErr("All fields required");
+      if (pin !== pin2) return showAuthErr("PINs do not match");
+      if (pin.length !== 4 || !/^\d+$/.test(pin)) return showAuthErr("PIN must be 4 digits");
+      if (db.findUserByEmail(email)) return showAuthErr("Email already registered");
+      const id = db.insertUser({ name, email, phone, pin });
+      loginUser(id);
+    }
+  }, 600);
+}
+
+function loginUser(id) {
+  currentUserId = id;
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("main-screen").style.display = "block";
+  setTab("wallet");
+}
+
+function logout() {
+  currentUserId = null;
+  document.getElementById("main-screen").style.display = "none";
+  document.getElementById("auth-screen").style.display = "flex";
+  setAuthMode("login");
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  document.getElementById(`screen-${tab}`).classList.add("active");
+  refreshHeader();
+  if (tab === "wallet")  renderWallet();
+  if (tab === "qr")      renderPayScan();
+  if (tab === "history") renderHistory();
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+function refreshHeader() {
+  const user   = db.findUserById(currentUserId);
+  const wallet = db.getWallet(currentUserId);
+  document.getElementById("header-username").textContent = user?.name || "";
+  document.getElementById("header-balance").textContent  = (wallet?.balance_points || 0).toLocaleString() + " pts";
+}
+
+// ─── Wallet Screen ────────────────────────────────────────────────────────────
+function renderWallet() {
+  const user   = db.findUserById(currentUserId);
+  const wallet = db.getWallet(currentUserId);
+  const pts    = wallet.balance_points;
+
+  document.getElementById("wallet-balance-pts").innerHTML = `${pts.toLocaleString()} <span>pts</span>`;
+  document.getElementById("wallet-balance-rand").textContent = `≈ R${(pts/10).toFixed(2)} equivalent`;
+  document.getElementById("wallet-user-info").textContent = `👤 ${user?.name} · ${user?.phone}`;
+
+  // Presets
+  const presets = document.getElementById("preset-amounts");
+  presets.innerHTML = "";
+  [100,250,500,1000].forEach(a => {
+    const b = document.createElement("button");
+    b.className = "preset-btn";
+    b.textContent = `${a} pts`;
+    b.onclick = () => {
+      document.getElementById("topup-input").value = a;
+      document.querySelectorAll(".preset-btn").forEach(x => x.classList.remove("selected"));
+      b.classList.add("selected");
+    };
+    presets.appendChild(b);
+  });
+
+  // Recent
+  const txs = db.getTransactions(currentUserId).slice(0,4);
+  const list = document.getElementById("recent-tx-list");
+  if (txs.length === 0) {
+    list.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No transactions yet</div>`;
+    return;
+  }
+  list.innerHTML = txs.map(tx => {
+    const m  = tx.merchant_id ? db.getMerchant(tx.merchant_id) : null;
+    const cr = tx.points > 0;
+    return `
+      <div class="mini-tx">
+        <div class="mini-tx-left">
+          <div class="tx-icon" style="background:${cr?'rgba(34,211,160,.13)':'rgba(108,99,255,.13)'}">
+            ${cr ? "⬆️" : m ? (catIcons[m.category]||"🏪") : "💳"}
+          </div>
+          <div>
+            <div class="mini-tx-name">${cr ? "Top-up" : m?.name || "Payment"}</div>
+            <div class="mini-tx-date">${tx.created_at}</div>
+          </div>
+        </div>
+        <div class="mini-tx-pts" style="color:${cr?'var(--success)':'var(--danger)'}">
+          ${cr?"+":""}${tx.points} pts
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function onTopupInput() {
+  document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("selected"));
+  const v = parseInt(document.getElementById("topup-input").value);
+  if (v) {
+    document.querySelectorAll(".preset-btn").forEach(b => {
+      if (parseInt(b.textContent) === v) b.classList.add("selected");
+    });
+  }
+}
+
+function doTopup() {
+  const pts = parseInt(document.getElementById("topup-input").value);
+  if (!pts || pts < 10) return;
+  const btn = document.getElementById("topup-add-btn");
+  btn.disabled = true; btn.textContent = "…";
+  setTimeout(() => {
+    const ref = `TOP-${Date.now().toString().slice(-5)}`;
+    db.topupWallet(currentUserId, pts, ref);
+    document.getElementById("topup-input").value = "";
+    document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("selected"));
+    btn.disabled = false; btn.textContent = "Add";
+    const s = document.getElementById("topup-success");
+    s.classList.remove("hidden");
+    renderWallet(); refreshHeader();
+    setTimeout(() => s.classList.add("hidden"), 2500);
+  }, 800);
+}
+
+// ─── Pay Screen ───────────────────────────────────────────────────────────────
+function renderPayScan() {
+  paySelected = null;
+  showPayStep("scan");
+  const wallet = db.getWallet(currentUserId);
+  document.getElementById("pay-balance-val").textContent = wallet.balance_points.toLocaleString() + " pts";
+
+  const list = document.getElementById("merchant-list");
+  list.innerHTML = "";
+  store.merchants.forEach(m => {
+    const color = catColors[m.category] || "var(--accent)";
+    const btn = document.createElement("button");
+    btn.className = "merchant-btn";
+    btn.id = `m-btn-${m.id}`;
+    btn.innerHTML = `
+      <div class="merchant-cat-icon" style="background:${color}22">${catIcons[m.category]||"🏪"}</div>
+      <div>
+        <div class="merchant-name">${m.name}</div>
+        <div class="merchant-sub">${m.category} · ${m.qr_code}</div>
+      </div>
+      <div class="merchant-arrow">›</div>`;
+    btn.onclick = () => simulateScan(m);
+    list.appendChild(btn);
+  });
+}
+
+function simulateScan(merchant) {
+  if (payLoading) return;
+  payLoading = true;
+  document.querySelectorAll(".merchant-btn").forEach(b => b.disabled = true);
+  document.getElementById("scanner-idle").classList.add("hidden");
+  document.getElementById("scanner-active").classList.remove("hidden");
+  setTimeout(() => {
+    payLoading = false;
+    paySelected = merchant;
+    showPayStep("confirm");
+    document.getElementById("confirm-m-icon").textContent = catIcons[merchant.category] || "🏪";
+    document.getElementById("confirm-m-name").textContent = merchant.name;
+    document.getElementById("confirm-m-cat").textContent  = merchant.category;
+    document.getElementById("confirm-qr-label").textContent = merchant.qr_code;
+    document.getElementById("pay-amount-input").value = "";
+    document.getElementById("amount-hint").textContent = `Balance: ${db.getWallet(currentUserId).balance_points} pts`;
+    const canvas = document.getElementById("qr-canvas");
+    drawQR(canvas, merchant.qr_code, 140);
+  }, 1200);
+}
+
+function updateAmountHint() {
+  const v = parseInt(document.getElementById("pay-amount-input").value) || 0;
+  const w = db.getWallet(currentUserId);
+  document.getElementById("amount-hint").textContent = `Balance: ${w.balance_points} pts${v ? ` · ≈ R${(v/10).toFixed(2)}` : ""}`;
+}
+
+function payConfirm() {
+  const pts = parseInt(document.getElementById("pay-amount-input").value);
+  if (!pts || pts < 1) return;
+  showPayStep("pin");
+  document.getElementById("pin-subtitle").textContent = `Paying ${pts} pts to ${paySelected?.name}`;
+  document.getElementById("pin-input").value = "";
+  document.getElementById("pin-err").classList.add("hidden");
+}
+
+function backToConfirm() {
+  showPayStep("confirm");
+  document.getElementById("pin-input").value = "";
+  document.getElementById("pin-err").classList.add("hidden");
+}
+
+function submitPin() {
+  const user = db.findUserById(currentUserId);
+  const pin  = document.getElementById("pin-input").value;
+  if (pin !== user.pin) {
+    const e = document.getElementById("pin-err");
+    e.textContent = "Incorrect PIN. Try again.";
+    e.classList.remove("hidden");
+    document.getElementById("pin-input").value = "";
+    return;
+  }
+  const pts = parseInt(document.getElementById("pay-amount-input").value);
+  const res = db.payMerchant(currentUserId, paySelected.id, pts);
+  if (res.ok) {
+    showPayStep("success");
+    document.getElementById("success-sub").textContent = `You paid ${pts} pts to ${paySelected.name}`;
+    document.getElementById("success-ref").textContent = `Ref: ${res.ref}`;
+    document.getElementById("success-bal").innerHTML   = `New Balance: <span>${res.balance.toLocaleString()} pts</span>`;
+    refreshHeader();
+  } else {
+    showPayStep("error");
+    document.getElementById("error-msg").textContent = res.msg;
+  }
+}
+
+function payReset() { renderPayScan(); }
+
+function showPayStep(step) {
+  ["scan","confirm","pin","success","error"].forEach(s => {
+    document.getElementById(`pay-step-${s}`).classList.toggle("hidden", s !== step);
+  });
+  if (step === "scan") {
+    document.getElementById("scanner-idle").classList.remove("hidden");
+    document.getElementById("scanner-active").classList.add("hidden");
+    document.querySelectorAll(".merchant-btn").forEach(b => b.disabled = false);
+  }
+}
+
+// ─── History Screen ───────────────────────────────────────────────────────────
+function setFilter(f) {
+  historyFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.f === f));
+  renderHistory();
+}
+
+function renderHistory() {
+  const txs     = db.getTransactions(currentUserId);
+  const totalIn = txs.filter(t=>t.points>0).reduce((s,t)=>s+t.points,0);
+  const totalOut= txs.filter(t=>t.points<0).reduce((s,t)=>s+Math.abs(t.points),0);
+  document.getElementById("stat-in").textContent  = `+${totalIn.toLocaleString()}`;
+  document.getElementById("stat-out").textContent = `-${totalOut.toLocaleString()}`;
+
+  const filtered = historyFilter==="all" ? txs : txs.filter(t=>t.type===historyFilter);
+  const list = document.getElementById("tx-list");
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="tx-empty">No transactions found</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map((tx,i) => {
+    const m   = tx.merchant_id ? db.getMerchant(tx.merchant_id) : null;
+    const cr  = tx.points > 0;
+    const col = m ? catColors[m.category] : "var(--success)";
+    return `
+      <div class="tx-row" style="${i<filtered.length-1?'border-bottom:1px solid var(--border)':''}">
+        <div class="tx-main-icon" style="background:${col}22">
+          ${cr ? "⬆️" : m ? (catIcons[m.category]||"🏪") : "💳"}
+        </div>
+        <div class="tx-info">
+          <div class="tx-name">${cr ? "Points Top-up" : m?.name || "Payment"}</div>
+          <div class="tx-meta">${tx.ref} · ${tx.created_at}</div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-pts" style="color:${cr?'var(--success)':'var(--danger)'}">
+            ${cr?"+":""}${tx.points} pts
+          </div>
+          <div class="tx-rand">R${(Math.abs(tx.points)/10).toFixed(2)}</div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    if (!currentUserId) authSubmit();
+  }
+});
+</script>
+</body>
+</html>
