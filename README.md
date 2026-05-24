@@ -25,7 +25,7 @@ A simple, points-based system that mirrors cash transactions while introducing d
 
 | Feature | Description |
 |---------|-------------|
-| **Points-based currency** | 1 Rand = 1 Point – simple, intuitive exchange |
+| **Points-based currency** | 1 Rand = 0.1 Point – simple, intuitive exchange |
 | **QR Code Payments** | Scan any merchant QR code to pay instantly |
 | **Cash Top-Ups** | Convert physical cash to digital points at participating agents |
 | **Transaction History** | View all payments and top-ups chronologically |
